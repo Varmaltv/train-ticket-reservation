@@ -1,0 +1,76 @@
+
+name: Reusable Tomcat Deployment
+
+on:
+  workflow_call:
+    inputs:
+      tomcat_host:
+        required: true
+        type: string
+
+      tomcat_user:
+        required: true
+        type: string
+
+    secrets:
+      TOMCAT_PASSWORD:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Maven Build
+        run: mvn clean package
+
+      - name: Verify WAR
+        run: ls -lh target/*.war
+
+      - name: Install Expect
+        run: sudo apt-get update && sudo apt-get install -y expect
+
+      - name: Deploy WAR to Tomcat
+        env:
+          TOMCAT_HOST: ${{ inputs.tomcat_host }}
+          TOMCAT_USER: ${{ inputs.tomcat_user }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+
+        run: |
+          expect <<'EOF'
+          set timeout 60
+
+          spawn scp -o StrictHostKeyChecking=no target/*.war $env(TOMCAT_USER)@$env(TOMCAT_HOST):/tmp/
+
+          expect {
+            "password:" {
+              send "$env(TOMCAT_PASSWORD)\r"
+              exp_continue
+            }
+            eof
+          }
+          EOF
+
+          expect <<'EOF'
+          set timeout 60
+
+          spawn ssh -o StrictHostKeyChecking=no $env(TOMCAT_USER)@$env(TOMCAT_HOST) "sudo mv /tmp/*.war /opt/tomcat/webapps/"
+
+          expect {
+            "password:" {
+              send "$env(TOMCAT_PASSWORD)\r"
+              exp_continue
+            }
+            eof
+          }
+          EOF
