@@ -1,0 +1,60 @@
+
+name: Java Tomcat CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+jobs:
+
+  DEV:
+    uses: ./.github/workflows/reusable.yml
+    with:
+      tomcat_host: ${{ secrets.DEV_HOST }}
+      tomcat_user: ${{ secrets.DEV_USER }}
+    secrets:
+      TOMCAT_PASSWORD: ${{ secrets.DEV_PASSWORD }}
+
+  QA:
+    needs: DEV
+    uses: ./.github/workflows/reusable.yml
+    with:
+      tomcat_host: ${{ secrets.QA_HOST }}
+      tomcat_user: ${{ secrets.QA_USER }}
+    secrets:
+      TOMCAT_PASSWORD: ${{ secrets.QA_PASSWORD }}
+
+  PREPROD:
+    needs: QA
+    uses: ./.github/workflows/reusable.yml
+    with:
+      tomcat_host: ${{ secrets.PREPROD_HOST }}
+      tomcat_user: ${{ secrets.PREPROD_USER }}
+    secrets:
+      TOMCAT_PASSWORD: ${{ secrets.PREPROD_PASSWORD }}
+
+  PROD:
+    needs: PREPROD
+    uses: ./.github/workflows/reusable.yml
+    with:
+      tomcat_host: ${{ secrets.PROD_HOST }}
+      tomcat_user: ${{ secrets.PROD_USER }}
+    secrets:
+      TOMCAT_PASSWORD: ${{ secrets.PROD_PASSWORD }}
+
+
+         
+
+   
+
+       
+
+
+
+
+          
+         
+       
