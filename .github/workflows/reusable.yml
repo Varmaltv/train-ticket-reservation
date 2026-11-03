@@ -4,73 +4,86 @@ name: Reusable Tomcat Deployment
 on:
   workflow_call:
     inputs:
-      tomcat_host:
+      environment:
+        description: "Deployment environment"
         required: true
         type: string
-
-      tomcat_user:
-        required: true
-        type: string
-
-    secrets:
-      TOMCAT_PASSWORD:
-        required: true
 
 jobs:
   deploy:
+    name: Deploy to ${{ inputs.environment }}
     runs-on: ubuntu-latest
+
+    environment: ${{ inputs.environment }}
 
     steps:
 
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup JDK
-        uses: actions/setup-java@v4
+      # Download WAR artifact
+      - name: Download WAR Artifact
+        uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: '17'
+          name: java-war
+          path: artifact
 
-      - name: Maven Build
-        run: mvn clean package
+      # Configure SSH private key
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.TOMCAT_SSH_KEY }}
 
-      - name: Verify WAR
-        run: ls -lh target/*.war
-
-      - name: Install Expect
-        run: sudo apt-get update && sudo apt-get install -y expect
-
-      - name: Deploy WAR to Tomcat
+      # Configure verified SSH host key
+      - name: Configure SSH Host Verification
         env:
-          TOMCAT_HOST: ${{ inputs.tomcat_host }}
-          TOMCAT_USER: ${{ inputs.tomcat_user }}
-          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+          TOMCAT_KNOWN_HOSTS: ${{ secrets.TOMCAT_KNOWN_HOSTS }}
 
         run: |
-          expect <<'EOF'
-          set timeout 60
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
 
-          spawn scp -o StrictHostKeyChecking=no target/*.war $env(TOMCAT_USER)@$env(TOMCAT_HOST):/tmp/
+          printf '%s\n' "$TOMCAT_KNOWN_HOSTS" > ~/.ssh/known_hosts
 
-          expect {
-            "password:" {
-              send "$env(TOMCAT_PASSWORD)\r"
-              exp_continue
-            }
-            eof
-          }
-          EOF
+          chmod 600 ~/.ssh/known_hosts
 
-          expect <<'EOF'
-          set timeout 60
+      # Copy WAR file to Tomcat server
+      - name: Copy WAR to Tomcat
+        env:
+          TOMCAT_HOST: ${{ vars.TOMCAT_HOST }}
+          TOMCAT_USER: ${{ vars.TOMCAT_USER }}
+          TOMCAT_PORT: ${{ vars.TOMCAT_PORT }}
+          APP_NAME: ${{ vars.APP_NAME }}
 
-          spawn ssh -o StrictHostKeyChecking=no $env(TOMCAT_USER)@$env(TOMCAT_HOST) "sudo mv /tmp/*.war /opt/tomcat/webapps/"
+        run: |
+          scp -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+              -P "$TOMCAT_PORT" \
+              artifact/*.war \
+              "$TOMCAT_USER@$TOMCAT_HOST:/tmp/$APP_NAME.war"
 
-          expect {
-            "password:" {
-              send "$env(TOMCAT_PASSWORD)\r"
-              exp_continue
-            }
-            eof
-          }
-          EOF
+      # Automatically find webapps and deploy WAR
+      - name: Deploy WAR to Tomcat
+        env:
+          TOMCAT_HOST: ${{ vars.TOMCAT_HOST }}
+          TOMCAT_USER: ${{ vars.TOMCAT_USER }}
+          TOMCAT_PORT: ${{ vars.TOMCAT_PORT }}
+          APP_NAME: ${{ vars.APP_NAME }}
+
+        run: |
+          ssh -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+              -p "$TOMCAT_PORT" \
+              "$TOMCAT_USER@$TOMCAT_HOST" \
+              "WEBAPPS=\$(find /opt /usr/local -type d -name webapps 2>/dev/null | head -n 1);
+               test -n \"\$WEBAPPS\" || exit 1;
+               mv /tmp/$APP_NAME.war \"\$WEBAPPS/$APP_NAME.war\""
+
+          echo "WAR deployment completed successfully"
+
+      # Display application URL
+      - name: Application URL
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+
+        run: |
+          echo "Deployment completed successfully"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Application URL: $APP_URL"
