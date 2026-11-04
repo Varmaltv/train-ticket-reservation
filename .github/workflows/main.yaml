@@ -43,7 +43,7 @@ jobs:
   deploy_dev:
     name: Deploy to DEV
     needs: build
-    uses: ./.github/workflows/reusable-deploy.yml
+    uses: ./.github/workflows/reusable.yml
     with:
       environment: dev
 
@@ -51,7 +51,7 @@ jobs:
   deploy_qa:
     name: Deploy to QA
     needs: deploy_dev
-    uses: ./.github/workflows/reusable-deploy.yml
+    uses: ./.github/workflows/reusable.yml
     with:
       environment: qa
 
@@ -59,7 +59,7 @@ jobs:
   deploy_preprod:
     name: Deploy to PREPROD
     needs: deploy_qa
-    uses: ./.github/workflows/reusable-deploy.yml
+    uses: ./.github/workflows/reusable.yml
     with:
       environment: preprod
 
@@ -67,7 +67,7 @@ jobs:
   deploy_prod:
     name: Deploy to PROD
     needs: deploy_preprod
-    uses: ./.github/workflows/reusable-deploy.yml
+    uses: ./.github/workflows/reusable.yml
     with:
       environment: prod
 
