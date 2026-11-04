@@ -22,7 +22,7 @@ jobs:
       - name: Download WAR Artifact
         uses: actions/download-artifact@v4
         with:
-          name: java-war
+          name: trainticket-war
           path: artifact
 
       # Configure SSH private key
