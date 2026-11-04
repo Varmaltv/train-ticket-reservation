@@ -30,13 +30,13 @@ jobs:
         run: mvn clean package
 
       - name: Verify WAR File
-        run: test -f target/java-webapp.war
+        run: test -f target/*.war
 
       - name: Upload WAR Artifact
         uses: actions/upload-artifact@v5
         with:
-          name: java-war
-          path: target/java-webapp.war
+          name: trainticket-war
+          path: target/*.war
        
 
   # Deploy to DEV
