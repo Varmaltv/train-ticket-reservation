@@ -18,30 +18,25 @@ jobs:
 
     steps:
 
-      # Download WAR artifact
+      # Download WAR file
       - name: Download WAR Artifact
         uses: actions/download-artifact@v4
         with:
           name: trainticket-war
           path: artifact
 
-      # Configure SSH private key
+      # Configure SSH using GitHub secrets
       - name: Configure SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          TOMCAT_SSH_KEY: ${{ secrets.TOMCAT_SSH_KEY }}
-
-      # Configure verified SSH host key
-      - name: Configure SSH Host Verification
         env:
-          TOMCAT_KNOWN_HOSTS: ${{ secrets.TOMCAT_KNOWN_HOSTS }}
-
+          SSH_KEY: ${{ secrets.TOMCAT_SSH_KEY }}
+          SSH_HOST: ${{ secrets.TOMCAT_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
 
-          printf '%s\n' "$TOMCAT_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
+          echo "$SSH_HOST" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       # Copy WAR file to Tomcat server
@@ -51,39 +46,35 @@ jobs:
           TOMCAT_USER: ${{ vars.TOMCAT_USER }}
           TOMCAT_PORT: ${{ vars.TOMCAT_PORT }}
           APP_NAME: ${{ vars.APP_NAME }}
-
         run: |
-          scp -o StrictHostKeyChecking=yes \
-              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-              -P "$TOMCAT_PORT" \
-              artifact/*.war \
-              "$TOMCAT_USER@$TOMCAT_HOST:/tmp/$APP_NAME.war"
+          scp -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=yes \
+            -P "$TOMCAT_PORT" \
+            artifact/java-webapp.war \
+            "$TOMCAT_USER@$TOMCAT_HOST:/tmp/$APP_NAME.war"
 
-      # Automatically find webapps and deploy WAR
+      # Deploy WAR file to Tomcat
       - name: Deploy WAR to Tomcat
         env:
           TOMCAT_HOST: ${{ vars.TOMCAT_HOST }}
           TOMCAT_USER: ${{ vars.TOMCAT_USER }}
           TOMCAT_PORT: ${{ vars.TOMCAT_PORT }}
           APP_NAME: ${{ vars.APP_NAME }}
-
         run: |
-          ssh -o StrictHostKeyChecking=yes \
-              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-              -p "$TOMCAT_PORT" \
-              "$TOMCAT_USER@$TOMCAT_HOST" \
-              "WEBAPPS=\$(find /opt /usr/local -type d -name webapps 2>/dev/null | head -n 1);
-               test -n \"\$WEBAPPS\" || exit 1;
-               mv /tmp/$APP_NAME.war \"\$WEBAPPS/$APP_NAME.war\""
+          ssh -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=yes \
+            -p "$TOMCAT_PORT" \
+            "$TOMCAT_USER@$TOMCAT_HOST" \
+            "WEBAPPS=\$(find /opt /usr/local -type d -name webapps 2>/dev/null | head -n 1);
+             test -n \"\$WEBAPPS\" || exit 1;
+             mv /tmp/$APP_NAME.war \"\$WEBAPPS/$APP_NAME.war\""
 
-          echo "WAR deployment completed successfully"
+          echo "WAR deployment completed!"
 
       # Display application URL
       - name: Application URL
         env:
           APP_URL: ${{ vars.APP_URL }}
-
         run: |
-          echo "Deployment completed successfully"
           echo "Environment: ${{ inputs.environment }}"
           echo "Application URL: $APP_URL"
