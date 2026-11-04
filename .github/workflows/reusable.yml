@@ -50,7 +50,7 @@ jobs:
           scp -i ~/.ssh/id_rsa \
             -o StrictHostKeyChecking=yes \
             -P "$TOMCAT_PORT" \
-            artifact/java-webapp.war \
+            artifact/trainticket-war \
             "$TOMCAT_USER@$TOMCAT_HOST:/tmp/$APP_NAME.war"
 
       # Deploy WAR file to Tomcat
