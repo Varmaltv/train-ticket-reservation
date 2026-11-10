@@ -1,1 +1,73 @@
 
+name: TrainBook CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+jobs:
+
+  # Build Java WAR File
+  build:
+    name: Build WAR
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Maven Build
+        run: mvn clean package
+
+      - name: Upload WAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trainbook-war
+          path: target/TrainBook-1.0.0-SNAPSHOT.war
+
+
+  # Deploy to DEV
+  dev:
+    name: Deploy to DEV
+    needs: build
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: DEV
+
+
+  # Deploy to QA
+  qa:
+    name: Deploy to QA
+    needs: dev
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: QA
+
+
+  # Deploy to PRE-PROD
+  preprod:
+    name: Deploy to PRE-PROD
+    needs: qa
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: PRE-PROD
+
+
+  # Deploy to PROD
+  prod:
+    name: Deploy to PROD
+    needs: preprod
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: PROD
+
