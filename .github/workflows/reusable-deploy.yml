@@ -27,6 +27,6 @@ jobs:
       # Deploy WAR using Tomcat Manager
       - name: Deploy WAR to Tomcat
         run: |
-          curl -u "${{ vars.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
+          curl -u "${{ secrets.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
           --upload-file TrainBook-1.0.0-SNAPSHOT.war \
-          "http://${{ vars.TOMCAT_HOST }}:8080/manager/text/deploy?path=/${{ vars.APP_NAME }}&update=true"
+          "http://${{ secrets.TOMCAT_HOST }}:8080/manager/text/deploy?path=/${{ secrets.APP_NAME }}&update=true"
