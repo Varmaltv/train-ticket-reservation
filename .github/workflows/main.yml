@@ -1,74 +1,97 @@
-name: TrainBook CI/CD Pipeline
+
+name: CI-CD Pipeline - Train Booking
 
 on:
   push:
     branches:
-      - master
-
+      - main
   workflow_dispatch:
 
 jobs:
 
-  # Build Java WAR File
+  # JOB 1 - BUILD
   build:
-    name: Build WAR
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - name: Setup JDK
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: '17'
+          cache: maven
 
-      - name: Maven Build
-        run: mvn clean package
+      - name: Validate with Maven
+        run: mvn validate
+
+      - name: Compile with Maven
+        run: mvn compile
+
+      - name: Test with Maven
+        run: mvn test
+
+      - name: Package with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Prepare WAR
+        run: |
+          mkdir -p deploy
+          WAR_FILE=$(find target -maxdepth 1 -name "*.war" -print -quit)
+
+          if [ -z "$WAR_FILE" ]; then
+            echo "ERROR: WAR file not found"
+            exit 1
+          fi
+
+          cp "$WAR_FILE" deploy/train-booking.war
+          ls -lh deploy/
 
       - name: Upload WAR Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trainbook-war
-          path: target/TrainBook-1.0.0-SNAPSHOT.war
+          name: train-booking-war
+          path: deploy/train-booking.war
+          if-no-files-found: error
 
-
-  # Deploy to DEV
-  dev:
-    name: Deploy to DEV
+  # JOB 2 - DEV
+  deploy-dev:
+    name: Deploy DEV
     needs: build
     uses: ./.github/workflows/reusable-deploy.yml
     with:
       environment: DEV
+    secrets: inherit
 
-
-  # Deploy to QA
-  qa:
-    name: Deploy to QA
+  # JOB 3 - TEST
+  deploy-test:
+    name: Deploy TEST
     needs: build
     uses: ./.github/workflows/reusable-deploy.yml
     with:
-      environment: QA
+      environment: TEST
+    secrets: inherit
 
-
-  # Deploy to PRE-PROD
-  preprod:
-    name: Deploy to PRE-PROD
+  # JOB 4 - PRE-PROD
+  deploy-preprod:
+    name: Deploy PREPROD
     needs: build
     uses: ./.github/workflows/reusable-deploy.yml
     with:
       environment: PRE-PROD
+    secrets: inherit
 
-
-  # Deploy to PROD
-  prod:
-    name: Deploy to PROD
+  # JOB 5 - PROD
+  deploy-prod:
+    name: Deploy PROD
     needs: build
     uses: ./.github/workflows/reusable-deploy.yml
     with:
       environment: PROD
+    secrets: inherit
 
 
 
