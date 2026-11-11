@@ -17,10 +17,10 @@ jobs:
     steps:
 
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '8'
@@ -29,7 +29,7 @@ jobs:
         run: mvn clean package
 
       - name: Upload WAR Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: trainbook-war
           path: target/TrainBook-1.0.0-SNAPSHOT.war
@@ -42,6 +42,34 @@ jobs:
     uses: ./.github/workflows/reusable-deploy.yml
     with:
       environment: DEV
+
+
+  # Deploy to QA
+  qa:
+    name: Deploy to QA
+    needs: build
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: QA
+
+
+  # Deploy to PRE-PROD
+  preprod:
+    name: Deploy to PRE-PROD
+    needs: build
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: PRE-PROD
+
+
+  # Deploy to PROD
+  prod:
+    name: Deploy to PROD
+    needs: build
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: PROD
+
 
 
  
