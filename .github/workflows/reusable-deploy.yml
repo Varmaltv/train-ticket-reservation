@@ -1,3 +1,4 @@
+
 name: Reusable Tomcat Deployment
 
 on:
@@ -18,15 +19,27 @@ jobs:
 
     steps:
 
-      # Download WAR Artifact
       - name: Download WAR
         uses: actions/download-artifact@v4
         with:
-          name: trainbook-war
+          name: train-booking-war
+          path: deploy
 
-      # Deploy WAR using Tomcat Manager
-      - name: Deploy WAR to Tomcat
+      - name: Deploy to Tomcat
+        env:
+          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
+          TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+
         run: |
-          curl -u "${{ secrets.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
-          --upload-file TrainBook-1.0.0-SNAPSHOT.war \
-          "http://${{ secrets.TOMCAT_HOST }}:8080/manager/text/deploy?path=/${{ secrets.APP_NAME }}&update=true"
+          set -e
+
+          test -n "$TOMCAT_HOST" || exit 1
+          test -n "$TOMCAT_USER" || exit 1
+          test -n "$TOMCAT_PASSWORD" || exit 1
+
+          curl --fail --show-error \
+            -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            -T deploy/train-booking.war \
+            "${TOMCAT_HOST%/}/manager/text/deploy?path=/TrainBook&update=true"
+
