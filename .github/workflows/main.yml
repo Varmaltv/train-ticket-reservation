@@ -61,121 +61,38 @@ jobs:
   deploy-dev:
     name: Deploy DEV
     needs: build
-    runs-on: ubuntu-latest
-    environment: DEV
-
-    steps:
-      - name: Download WAR
-        uses: actions/download-artifact@v4
-        with:
-          name: train-booking-war
-          path: deploy
-
-      - name: Deploy to DEV Tomcat
-        env:
-          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
-          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
-        run: |
-          set -e
-          test -n "$TOMCAT_HOST" || exit 1
-          test -n "$TOMCAT_USER" || exit 1
-          test -n "$TOMCAT_PASSWORD" || exit 1
-
-          curl --fail --show-error \
-            -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
-            -T deploy/train-booking.war \
-            "${TOMCAT_HOST%/}/manager/text/deploy?path=/TrainBook&update=true"
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: DEV
+    secrets: inherit
 
   # JOB 3 - TEST
   deploy-test:
     name: Deploy TEST
     needs: build
-    runs-on: ubuntu-latest
-    environment: TEST
-
-    steps:
-      - name: Download WAR
-        uses: actions/download-artifact@v4
-        with:
-          name: train-booking-war
-          path: deploy
-
-      - name: Deploy to TEST Tomcat
-        env:
-          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
-          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
-        run: |
-          set -e
-          test -n "$TOMCAT_HOST" || exit 1
-          test -n "$TOMCAT_USER" || exit 1
-          test -n "$TOMCAT_PASSWORD" || exit 1
-
-          curl --fail --show-error \
-            -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
-            -T deploy/train-booking.war \
-            "${TOMCAT_HOST%/}/manager/text/deploy?path=/TrainBook&update=true"
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: TEST
+    secrets: inherit
 
   # JOB 4 - PRE-PROD
   deploy-preprod:
-    name: Deploy PrePROD
+    name: Deploy PREPROD
     needs: build
-    runs-on: ubuntu-latest
-    environment: PRE-PROD
-
-    steps:
-      - name: Download WAR
-        uses: actions/download-artifact@v4
-        with:
-          name: train-booking-war
-          path: deploy
-
-      - name: Deploy to PRE-PROD Tomcat
-        env:
-          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
-          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
-        run: |
-          set -e
-          test -n "$TOMCAT_HOST" || exit 1
-          test -n "$TOMCAT_USER" || exit 1
-          test -n "$TOMCAT_PASSWORD" || exit 1
-
-          curl --fail --show-error \
-            -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
-            -T deploy/train-booking.war \
-            "${TOMCAT_HOST%/}/manager/text/deploy?path=/TrainBook&update=true"
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: PRE-PROD
+    secrets: inherit
 
   # JOB 5 - PROD
   deploy-prod:
     name: Deploy PROD
     needs: build
-    runs-on: ubuntu-latest
-    environment: PROD
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: PROD
+    secrets: inherit
 
-    steps:
-      - name: Download WAR
-        uses: actions/download-artifact@v4
-        with:
-          name: train-booking-war
-          path: deploy
-
-      - name: Deploy to PROD Tomcat
-        env:
-          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
-          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
-        run: |
-          set -e
-          test -n "$TOMCAT_HOST" || exit 1
-          test -n "$TOMCAT_USER" || exit 1
-          test -n "$TOMCAT_PASSWORD" || exit 1
-
-          curl --fail --show-error \
-            -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
-            -T deploy/train-booking.war \
-            "${TOMCAT_HOST%/}/manager/text/deploy?path=/TrainBook&update=true"
 
 
 
