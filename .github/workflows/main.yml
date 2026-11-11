@@ -44,28 +44,4 @@ jobs:
       environment: DEV
 
 
-  # Deploy to QA
-  qa:
-    name: Deploy to QA
-    needs: dev
-    uses: ./.github/workflows/reusable-deploy.yml
-    with:
-      environment: QA
-
-
-  # Deploy to PRE-PROD
-  preprod:
-    name: Deploy to PRE-PROD
-    needs: qa
-    uses: ./.github/workflows/reusable-deploy.yml
-    with:
-      environment: PRE-PROD
-
-
-  # Deploy to PROD
-  prod:
-    name: Deploy to PROD
-    needs: preprod
-    uses: ./.github/workflows/reusable-deploy.yml
-    with:
-      environment: PROD
+ 
