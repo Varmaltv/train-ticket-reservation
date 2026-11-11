@@ -1,0 +1,44 @@
+
+name: Reusable Tomcat Deployment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Deployment Environment
+        required: true
+        type: string
+
+jobs:
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+
+    environment: ${{ inputs.environment }}
+
+    steps:
+
+      - name: Download WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: train-booking-war
+          path: deploy
+
+      - name: Deploy to Tomcat
+        env:
+          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
+          TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+
+        run: |
+          set -e
+
+          test -n "$TOMCAT_HOST" || exit 1
+          test -n "$TOMCAT_USER" || exit 1
+          test -n "$TOMCAT_PASSWORD" || exit 1
+
+          curl --fail --show-error \
+            -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            -T deploy/train-booking.war \
+            "${TOMCAT_HOST%/}/manager/text/deploy?path=/TrainBook&update=true"
