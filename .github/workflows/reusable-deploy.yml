@@ -1,0 +1,32 @@
+name: Reusable Tomcat Deployment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Deployment Environment
+        required: true
+        type: string
+
+jobs:
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+
+    environment: ${{ inputs.environment }}
+
+    steps:
+
+      # Download WAR Artifact
+      - name: Download WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: trainbook-war
+
+      # Deploy WAR using Tomcat Manager
+      - name: Deploy WAR to Tomcat
+        run: |
+          curl -u "${{ vars.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
+          --upload-file TrainBook-1.0.0-SNAPSHOT.war \
+          "http://${{ vars.TOMCAT_HOST }}:8080/manager/text/deploy?path=/${{ vars.APP_NAME }}&update=true"
