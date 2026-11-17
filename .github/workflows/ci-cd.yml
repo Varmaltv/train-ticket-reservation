@@ -3,8 +3,14 @@ name: Java CI-CD Pipeline
 on:
   push:
     branches:
-      - main
+      - master
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -12,63 +18,105 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Set up Java 8
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "8"
           cache: maven
 
-      - name: Maven Clean Test
-        run: mvn clean test
+      - name: Build and test WAR
+        run: mvn --batch-mode --no-transfer-progress clean verify
 
-      - name: Build WAR
-        run: mvn package -DskipTests
+      - name: Verify WAR exists
+        id: war
+        shell: bash
+        run: |
+          set -euo pipefail
+          WAR_FILE="$(find target -maxdepth 1 -type f -name '*.war' -print -quit)"
+          if [[ -z "$WAR_FILE" ]]; then
+            echo "Maven completed without producing a WAR in target/."
+            exit 1
+          fi
+          echo "file=$WAR_FILE" >> "$GITHUB_OUTPUT"
+          echo "Built $WAR_FILE"
 
-      - name: SonarQube Analysis
+      - name: Upload WAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-ticket-reservation-war
+          path: ${{ steps.war.outputs.file }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Check SonarQube configuration
+        id: sonar
+        shell: bash
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [[ -n "$SONAR_HOST_URL" && -n "$SONAR_TOKEN" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping SonarQube analysis: SONAR_HOST_URL and/or SONAR_TOKEN is not configured."
+          fi
+
+      - name: SonarQube analysis
+        if: ${{ steps.sonar.outputs.enabled == 'true' }}
         uses: SonarSource/sonarqube-scan-action@v5
         with:
           args: >
             -Dsonar.projectKey=train-ticket-reservation
             -Dsonar.projectName=train-ticket-reservation
-            -Dsonar.sources=src/main/java
-            -Dsonar.tests=src/test/java
+            -Dsonar.sources=src
             -Dsonar.java.binaries=target/classes
-            -Dsonar.java.test.binaries=target/test-classes
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Upload WAR to Nexus
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+        shell: bash
         env:
           NEXUS_URL: ${{ secrets.NEXUS_URL }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          WAR_FILE: ${{ steps.war.outputs.file }}
         run: |
-          set -e
-          WAR_FILE=$(find target -maxdepth 1 -name "*.war" | head -n 1)
-          test -n "$WAR_FILE" || { echo "No WAR file found in target/"; exit 1; }
+          set -euo pipefail
+          : "${NEXUS_URL:?Missing required secret NEXUS_URL}"
+          : "${NEXUS_USERNAME:?Missing required secret NEXUS_USERNAME}"
+          : "${NEXUS_PASSWORD:?Missing required secret NEXUS_PASSWORD}"
+          test -f "$WAR_FILE"
 
-          curl -f -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
+          curl --fail --show-error --silent \
+            --user "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
             --upload-file "$WAR_FILE" \
-            "$NEXUS_URL/$(basename "$WAR_FILE")"
+            "${NEXUS_URL%/}/$(basename "$WAR_FILE")"
 
       - name: Deploy WAR to Tomcat
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+        shell: bash
         env:
           TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
           TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+          WAR_FILE: ${{ steps.war.outputs.file }}
         run: |
-          set -e
-          WAR_FILE=$(find target -maxdepth 1 -name "*.war" | head -n 1)
-          test -n "$WAR_FILE" || { echo "No WAR file found in target/"; exit 1; }
+          set -euo pipefail
+          : "${TOMCAT_URL:?Missing required secret TOMCAT_URL}"
+          : "${TOMCAT_USER:?Missing required secret TOMCAT_USER}"
+          : "${TOMCAT_PASSWORD:?Missing required secret TOMCAT_PASSWORD}"
+          test -f "$WAR_FILE"
 
-          APP_NAME=$(basename "$WAR_FILE" .war)
-
-          curl -f -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+          APP_NAME="$(basename "$WAR_FILE" .war)"
+          curl --fail --show-error --silent \
+            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
             --upload-file "$WAR_FILE" \
-            "$TOMCAT_URL/manager/text/deploy?path=/$APP_NAME&update=true"
+            "${TOMCAT_URL%/}/manager/text/deploy?path=/$APP_NAME&update=true"
 
