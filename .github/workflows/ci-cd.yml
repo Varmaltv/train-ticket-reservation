@@ -1,0 +1,73 @@
+
+name: Java CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Checkout source code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Configure Java 17
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Maven clean test
+      - name: Maven Clean Test
+        run: mvn clean test
+
+      # Package WAR file
+      - name: Build WAR
+        run: mvn package -DskipTests
+
+      # SonarQube code analysis
+      - name: SonarQube Analysis
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.token=$SONAR_TOKEN
+
+      # Upload WAR to Nexus
+      - name: Upload WAR to Nexus
+        env:
+          NEXUS_URL: ${{ secrets.NEXUS_URL }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        run: |
+          WAR_FILE=$(find target -maxdepth 1 -name "*.war" | head -n 1)
+
+          curl -f -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
+            --upload-file "$WAR_FILE" \
+            "$NEXUS_URL/$(basename "$WAR_FILE")"
+
+      # Deploy WAR to Tomcat
+      - name: Deploy WAR to Tomcat
+        env:
+          TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
+          TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+        run: |
+          WAR_FILE=$(find target -maxdepth 1 -name "*.war" | head -n 1)
+
+          APP_NAME=$(basename "$WAR_FILE" .war)
+
+          curl -f -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --upload-file "$WAR_FILE" \
+            "$TOMCAT_URL/manager/text/deploy?path=/$APP_NAME&update=true"
