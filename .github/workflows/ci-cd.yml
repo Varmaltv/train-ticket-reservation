@@ -6,6 +6,8 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+
 jobs:
 
   build:
@@ -71,3 +73,4 @@ jobs:
           curl -f -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
             --upload-file "$WAR_FILE" \
             "$TOMCAT_URL/manager/text/deploy?path=/$APP_NAME&update=true"
+
