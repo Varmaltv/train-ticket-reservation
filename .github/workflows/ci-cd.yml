@@ -80,7 +80,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Upload WAR to Nexus
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         shell: bash
         env:
           NEXUS_URL: ${{ secrets.NEXUS_URL }}
@@ -100,7 +100,7 @@ jobs:
             "${NEXUS_URL%/}/$(basename "$WAR_FILE")"
 
       - name: Deploy WAR to Tomcat
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         shell: bash
         env:
           TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
