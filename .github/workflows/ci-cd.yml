@@ -1,70 +1,70 @@
-
 name: Java CI-CD Pipeline
 
 on:
   push:
     branches:
       - main
-
   workflow_dispatch:
 
 jobs:
-
   build:
     name: Build and Test
     runs-on: ubuntu-latest
 
     steps:
-
-      # Checkout source code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Configure Java 17
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
           cache: maven
 
-      # Maven clean test
       - name: Maven Clean Test
         run: mvn clean test
 
-      # Package WAR file
       - name: Build WAR
         run: mvn package -DskipTests
 
-      # SonarQube code analysis
-            # SonarQube code analysis
       - name: SonarQube Analysis
         uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: >
+            -Dsonar.projectKey=train-ticket-reservation
+            -Dsonar.projectName=train-ticket-reservation
+            -Dsonar.sources=src/main/java
+            -Dsonar.tests=src/test/java
+            -Dsonar.java.binaries=target/classes
+            -Dsonar.java.test.binaries=target/test-classes
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Upload WAR to Nexus
       - name: Upload WAR to Nexus
         env:
           NEXUS_URL: ${{ secrets.NEXUS_URL }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
         run: |
+          set -e
           WAR_FILE=$(find target -maxdepth 1 -name "*.war" | head -n 1)
+          test -n "$WAR_FILE" || { echo "No WAR file found in target/"; exit 1; }
 
           curl -f -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
             --upload-file "$WAR_FILE" \
             "$NEXUS_URL/$(basename "$WAR_FILE")"
 
-      # Deploy WAR to Tomcat
       - name: Deploy WAR to Tomcat
         env:
           TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
           TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
+          set -e
           WAR_FILE=$(find target -maxdepth 1 -name "*.war" | head -n 1)
+          test -n "$WAR_FILE" || { echo "No WAR file found in target/"; exit 1; }
 
           APP_NAME=$(basename "$WAR_FILE" .war)
 
