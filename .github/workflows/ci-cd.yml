@@ -80,7 +80,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Upload WAR to Nexus
-        if: ${{ github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         env:
           NEXUS_URL: ${{ secrets.NEXUS_URL }}
@@ -89,18 +89,34 @@ jobs:
           WAR_FILE: ${{ steps.war.outputs.file }}
         run: |
           set -euo pipefail
+
           : "${NEXUS_URL:?Missing required secret NEXUS_URL}"
           : "${NEXUS_USERNAME:?Missing required secret NEXUS_USERNAME}"
           : "${NEXUS_PASSWORD:?Missing required secret NEXUS_PASSWORD}"
           test -f "$WAR_FILE"
 
-          curl --fail --show-error --silent \
-            --user "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
-            --upload-file "$WAR_FILE" \
-            "${NEXUS_URL%/}/$(basename "$WAR_FILE")"
+          cat > "$RUNNER_TEMP/nexus-settings.xml" <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>nexus-snapshots</id>
+                <username>${NEXUS_USERNAME}</username>
+                <password>${NEXUS_PASSWORD}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+          mvn --batch-mode --no-transfer-progress \
+            --settings "$RUNNER_TEMP/nexus-settings.xml" \
+            org.apache.maven.plugins:maven-deploy-plugin:3.1.3:deploy-file \
+            -Dfile="$WAR_FILE" \
+            -DpomFile=pom.xml \
+            -DrepositoryId=nexus-snapshots \
+            -Durl="${NEXUS_URL%/}/repository/maven-snapshots"
 
       - name: Deploy WAR to Tomcat
-        if: ${{ github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         env:
           TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
@@ -109,6 +125,7 @@ jobs:
           WAR_FILE: ${{ steps.war.outputs.file }}
         run: |
           set -euo pipefail
+
           : "${TOMCAT_URL:?Missing required secret TOMCAT_URL}"
           : "${TOMCAT_USER:?Missing required secret TOMCAT_USER}"
           : "${TOMCAT_PASSWORD:?Missing required secret TOMCAT_PASSWORD}"
