@@ -45,7 +45,7 @@ jobs:
           name: war-file
           path: target/TrainBook-1.0.0-SNAPSHOT.war
 
-  deploy-dev:
+  DEV:
     needs: build
     if: inputs.environment == 'dev'
     runs-on: ubuntu-latest
@@ -67,7 +67,7 @@ jobs:
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  deploy-qa:
+  QA:
     needs: build
     if: inputs.environment == 'qa'
     runs-on: ubuntu-latest
@@ -89,7 +89,7 @@ jobs:
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  deploy-preprod:
+  PREPROD:
     needs: build
     if: inputs.environment == 'preprod'
     runs-on: ubuntu-latest
@@ -111,7 +111,7 @@ jobs:
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  deploy-prod:
+  PROD:
     needs: build
     if: inputs.environment == 'prod'
     runs-on: ubuntu-latest
