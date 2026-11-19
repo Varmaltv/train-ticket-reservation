@@ -60,7 +60,7 @@ jobs:
 
       - name: Deploy to DEV Tomcat
         env:
-          TOMCAT_URL: ${{ vars.TOMCAT_URL }}
+          TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
           TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
@@ -96,7 +96,7 @@ jobs:
 
       - name: Deploy to QA Tomcat
         env:
-          TOMCAT_URL: ${{ vars.TOMCAT_URL }}
+          TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
           TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
@@ -132,7 +132,7 @@ jobs:
 
       - name: Deploy to PREPROD Tomcat
         env:
-          TOMCAT_URL: ${{ vars.TOMCAT_URL }}
+          TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
           TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
@@ -168,7 +168,7 @@ jobs:
 
       - name: Deploy to PROD Tomcat
         env:
-          TOMCAT_URL: ${{ vars.TOMCAT_URL }}
+          TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
           TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
