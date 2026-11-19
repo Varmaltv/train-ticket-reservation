@@ -45,11 +45,12 @@ jobs:
           name: war-file
           path: target/TrainBook-1.0.0-SNAPSHOT.war
 
-  DEV:
+  deploy-dev:
     needs: build
     if: inputs.environment == 'dev'
     runs-on: ubuntu-latest
     environment: dev
+
     steps:
       - name: Download WAR
         uses: actions/download-artifact@v4
@@ -63,15 +64,29 @@ jobs:
           TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
-          curl --fail --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+          TOMCAT_URL="${TOMCAT_URL%/}"
+
+          if [[ -z "$TOMCAT_URL" || ( "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ) ]]; then
+            echo "::error::Set TOMCAT_URL to a full URL, for example https://tomcat.example.com"
+            exit 1
+          fi
+
+          if [[ -z "$TOMCAT_USER" || -z "$TOMCAT_PASSWORD" ]]; then
+            echo "::error::Configure TOMCAT_USERNAME and TOMCAT_PASSWORD"
+            exit 1
+          fi
+
+          curl --fail-with-body --show-error \
+            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  QA:
+  deploy-qa:
     needs: build
     if: inputs.environment == 'qa'
     runs-on: ubuntu-latest
     environment: qa
+
     steps:
       - name: Download WAR
         uses: actions/download-artifact@v4
@@ -85,15 +100,29 @@ jobs:
           TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
-          curl --fail --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+          TOMCAT_URL="${TOMCAT_URL%/}"
+
+          if [[ -z "$TOMCAT_URL" || ( "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ) ]]; then
+            echo "::error::Set TOMCAT_URL to a full URL, for example https://tomcat.example.com"
+            exit 1
+          fi
+
+          if [[ -z "$TOMCAT_USER" || -z "$TOMCAT_PASSWORD" ]]; then
+            echo "::error::Configure TOMCAT_USERNAME and TOMCAT_PASSWORD"
+            exit 1
+          fi
+
+          curl --fail-with-body --show-error \
+            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  PREPROD:
+  deploy-preprod:
     needs: build
     if: inputs.environment == 'preprod'
     runs-on: ubuntu-latest
     environment: preprod
+
     steps:
       - name: Download WAR
         uses: actions/download-artifact@v4
@@ -107,15 +136,29 @@ jobs:
           TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
-          curl --fail --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+          TOMCAT_URL="${TOMCAT_URL%/}"
+
+          if [[ -z "$TOMCAT_URL" || ( "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ) ]]; then
+            echo "::error::Set TOMCAT_URL to a full URL, for example https://tomcat.example.com"
+            exit 1
+          fi
+
+          if [[ -z "$TOMCAT_USER" || -z "$TOMCAT_PASSWORD" ]]; then
+            echo "::error::Configure TOMCAT_USERNAME and TOMCAT_PASSWORD"
+            exit 1
+          fi
+
+          curl --fail-with-body --show-error \
+            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  PROD:
+  deploy-prod:
     needs: build
     if: inputs.environment == 'prod'
     runs-on: ubuntu-latest
     environment: prod
+
     steps:
       - name: Download WAR
         uses: actions/download-artifact@v4
@@ -129,6 +172,19 @@ jobs:
           TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
-          curl --fail --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+          TOMCAT_URL="${TOMCAT_URL%/}"
+
+          if [[ -z "$TOMCAT_URL" || ( "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ) ]]; then
+            echo "::error::Set TOMCAT_URL to a full URL, for example https://tomcat.example.com"
+            exit 1
+          fi
+
+          if [[ -z "$TOMCAT_USER" || -z "$TOMCAT_PASSWORD" ]]; then
+            echo "::error::Configure TOMCAT_USERNAME and TOMCAT_PASSWORD"
+            exit 1
+          fi
+
+          curl --fail-with-body --show-error \
+            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
