@@ -1,27 +1,18 @@
-name: Build and deploy WAR
+name: Deployment of TOMCAT in different environments
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: Select environment
-        required: true
-        type: choice
-        options:
-          - dev
-          - qa
-          - preprod
-          - prod
 
 permissions:
   contents: read
 
 jobs:
   build:
+    name: Build WAR
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install Java
@@ -44,10 +35,11 @@ jobs:
         with:
           name: war-file
           path: target/TrainBook-1.0.0-SNAPSHOT.war
+          if-no-files-found: error
 
-  deploy-dev:
+  dev:
+    name: Deploy to DEV
     needs: build
-    if: inputs.environment == 'dev'
     runs-on: ubuntu-latest
     environment: dev
 
@@ -61,29 +53,36 @@ jobs:
       - name: Deploy to DEV Tomcat
         env:
           TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_USERNAME: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
+          set -euo pipefail
+
           TOMCAT_URL="${TOMCAT_URL%/}"
 
-          if [[ -z "$TOMCAT_URL" || ( "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ) ]]; then
-            echo "::error::Set TOMCAT_URL to a full URL, for example https://tomcat.example.com"
+          if [[ -z "$TOMCAT_URL" ]]; then
+            echo "::error::TOMCAT_URL is not configured for the dev environment"
             exit 1
           fi
 
-          if [[ -z "$TOMCAT_USER" || -z "$TOMCAT_PASSWORD" ]]; then
-            echo "::error::Configure TOMCAT_USERNAME and TOMCAT_PASSWORD"
+          if [[ "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ]]; then
+            echo "::error::TOMCAT_URL must begin with http:// or https://"
+            exit 1
+          fi
+
+          if [[ -z "$TOMCAT_USERNAME" || -z "$TOMCAT_PASSWORD" ]]; then
+            echo "::error::Tomcat credentials are not configured for the dev environment"
             exit 1
           fi
 
           curl --fail-with-body --show-error \
-            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --user "$TOMCAT_USERNAME:$TOMCAT_PASSWORD" \
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  deploy-qa:
-    needs: build
-    if: inputs.environment == 'qa'
+  qa:
+    name: Deploy to QA
+    needs: dev
     runs-on: ubuntu-latest
     environment: qa
 
@@ -97,29 +96,36 @@ jobs:
       - name: Deploy to QA Tomcat
         env:
           TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_USERNAME: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
+          set -euo pipefail
+
           TOMCAT_URL="${TOMCAT_URL%/}"
 
-          if [[ -z "$TOMCAT_URL" || ( "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ) ]]; then
-            echo "::error::Set TOMCAT_URL to a full URL, for example https://tomcat.example.com"
+          if [[ -z "$TOMCAT_URL" ]]; then
+            echo "::error::TOMCAT_URL is not configured for the qa environment"
             exit 1
           fi
 
-          if [[ -z "$TOMCAT_USER" || -z "$TOMCAT_PASSWORD" ]]; then
-            echo "::error::Configure TOMCAT_USERNAME and TOMCAT_PASSWORD"
+          if [[ "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ]]; then
+            echo "::error::TOMCAT_URL must begin with http:// or https://"
+            exit 1
+          fi
+
+          if [[ -z "$TOMCAT_USERNAME" || -z "$TOMCAT_PASSWORD" ]]; then
+            echo "::error::Tomcat credentials are not configured for the qa environment"
             exit 1
           fi
 
           curl --fail-with-body --show-error \
-            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --user "$TOMCAT_USERNAME:$TOMCAT_PASSWORD" \
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  deploy-preprod:
-    needs: build
-    if: inputs.environment == 'preprod'
+  preprod:
+    name: Deploy to PREPROD
+    needs: qa
     runs-on: ubuntu-latest
     environment: preprod
 
@@ -133,29 +139,36 @@ jobs:
       - name: Deploy to PREPROD Tomcat
         env:
           TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_USERNAME: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
+          set -euo pipefail
+
           TOMCAT_URL="${TOMCAT_URL%/}"
 
-          if [[ -z "$TOMCAT_URL" || ( "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ) ]]; then
-            echo "::error::Set TOMCAT_URL to a full URL, for example https://tomcat.example.com"
+          if [[ -z "$TOMCAT_URL" ]]; then
+            echo "::error::TOMCAT_URL is not configured for the preprod environment"
             exit 1
           fi
 
-          if [[ -z "$TOMCAT_USER" || -z "$TOMCAT_PASSWORD" ]]; then
-            echo "::error::Configure TOMCAT_USERNAME and TOMCAT_PASSWORD"
+          if [[ "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ]]; then
+            echo "::error::TOMCAT_URL must begin with http:// or https://"
+            exit 1
+          fi
+
+          if [[ -z "$TOMCAT_USERNAME" || -z "$TOMCAT_PASSWORD" ]]; then
+            echo "::error::Tomcat credentials are not configured for the preprod environment"
             exit 1
           fi
 
           curl --fail-with-body --show-error \
-            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --user "$TOMCAT_USERNAME:$TOMCAT_PASSWORD" \
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
 
-  deploy-prod:
-    needs: build
-    if: inputs.environment == 'prod'
+  prod:
+    name: Deploy to PROD
+    needs: preprod
     runs-on: ubuntu-latest
     environment: prod
 
@@ -169,22 +182,29 @@ jobs:
       - name: Deploy to PROD Tomcat
         env:
           TOMCAT_URL: ${{ secrets.TOMCAT_URL }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_USERNAME: ${{ secrets.TOMCAT_USERNAME }}
           TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
         run: |
+          set -euo pipefail
+
           TOMCAT_URL="${TOMCAT_URL%/}"
 
-          if [[ -z "$TOMCAT_URL" || ( "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ) ]]; then
-            echo "::error::Set TOMCAT_URL to a full URL, for example https://tomcat.example.com"
+          if [[ -z "$TOMCAT_URL" ]]; then
+            echo "::error::TOMCAT_URL is not configured for the prod environment"
             exit 1
           fi
 
-          if [[ -z "$TOMCAT_USER" || -z "$TOMCAT_PASSWORD" ]]; then
-            echo "::error::Configure TOMCAT_USERNAME and TOMCAT_PASSWORD"
+          if [[ "$TOMCAT_URL" != http://* && "$TOMCAT_URL" != https://* ]]; then
+            echo "::error::TOMCAT_URL must begin with http:// or https://"
+            exit 1
+          fi
+
+          if [[ -z "$TOMCAT_USERNAME" || -z "$TOMCAT_PASSWORD" ]]; then
+            echo "::error::Tomcat credentials are not configured for the prod environment"
             exit 1
           fi
 
           curl --fail-with-body --show-error \
-            --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --user "$TOMCAT_USERNAME:$TOMCAT_PASSWORD" \
             --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
             "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
