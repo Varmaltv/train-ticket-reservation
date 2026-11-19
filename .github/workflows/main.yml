@@ -1,1 +1,134 @@
+name: Build and deploy WAR
 
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Select environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - preprod
+          - prod
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: "8"
+          distribution: temurin
+          cache: maven
+
+      - name: Build WAR
+        run: mvn clean verify
+
+      - name: Verify WAR
+        run: |
+          test -f target/TrainBook-1.0.0-SNAPSHOT.war
+          unzip -t target/TrainBook-1.0.0-SNAPSHOT.war
+
+      - name: Upload WAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: war-file
+          path: target/TrainBook-1.0.0-SNAPSHOT.war
+
+  deploy-dev:
+    needs: build
+    if: inputs.environment == 'dev'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Download WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+          path: war
+
+      - name: Deploy to DEV Tomcat
+        env:
+          TOMCAT_URL: ${{ vars.TOMCAT_URL }}
+          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+        run: |
+          curl --fail --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
+            "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
+
+  deploy-qa:
+    needs: build
+    if: inputs.environment == 'qa'
+    runs-on: ubuntu-latest
+    environment: qa
+    steps:
+      - name: Download WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+          path: war
+
+      - name: Deploy to QA Tomcat
+        env:
+          TOMCAT_URL: ${{ vars.TOMCAT_URL }}
+          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+        run: |
+          curl --fail --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
+            "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
+
+  deploy-preprod:
+    needs: build
+    if: inputs.environment == 'preprod'
+    runs-on: ubuntu-latest
+    environment: preprod
+    steps:
+      - name: Download WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+          path: war
+
+      - name: Deploy to PREPROD Tomcat
+        env:
+          TOMCAT_URL: ${{ vars.TOMCAT_URL }}
+          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+        run: |
+          curl --fail --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
+            "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
+
+  deploy-prod:
+    needs: build
+    if: inputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Download WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+          path: war
+
+      - name: Deploy to PROD Tomcat
+        env:
+          TOMCAT_URL: ${{ vars.TOMCAT_URL }}
+          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
+          TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+        run: |
+          curl --fail --user "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+            --upload-file war/TrainBook-1.0.0-SNAPSHOT.war \
+            "$TOMCAT_URL/manager/text/deploy?path=/TrainBook&update=true"
